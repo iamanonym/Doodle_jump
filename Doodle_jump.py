@@ -32,8 +32,9 @@ class Hero(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = 310
         self.rect.y = 455
-        self.speed = 150
+        self.speed = 200
         self.way = 220
+        self.right = True
 
     def move(self):
         self.rect.y -= self.speed / fps
@@ -51,16 +52,16 @@ class Hero(pygame.sprite.Sprite):
         for sprite in down_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 560:
-                    self.speed, self.way = 150, 250
+                    self.speed, self.way = 200, 250
         for sprite in mid_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 360:
-                    self.speed, self.way = 150, 250
+                    self.speed, self.way = 200, 250
                     booly = True
         for sprite in up_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 160:
-                    self.speed, self.way = 150, 250
+                    self.speed, self.way = 200, 250
                     booly = True
         if booly:
             for sprite in down_site:
@@ -78,11 +79,25 @@ class Hero(pygame.sprite.Sprite):
                 Stand(up_site, all_sprites, *coord)
             self.move_down()
 
-    def move_x(self, dir):
-        self.rect.x += dir * abs(self.speed) / fps
+    def move_x(self, direct):
+        self.rect.x += direct * abs(self.speed) / fps
+        if direct:
+            self.turn(direct)
+        if self.rect.x < 0:
+            self.rect.x = 0
+        if self.rect.x + self.rect.width > 700:
+            self.rect.x = 700 - self.rect.width
 
     def move_down(self):
         self.rect.y += 150
+
+    def turn(self, direct):
+        if direct > 0 and not self.right:
+            self.image = pygame.transform.flip(self.image, 1, 0)
+            self.right = True
+        elif direct < 0 and self.right:
+            self.image = pygame.transform.flip(self.image, -1, 0)
+            self.right = False
 
 
 class Stand(pygame.sprite.Sprite):
