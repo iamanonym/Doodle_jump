@@ -47,28 +47,42 @@ class Hero(pygame.sprite.Sprite):
             self.way -= self.speed / fps
         if 10 > self.speed > 0:
             self.speed = -50
+        for sprite in down_site:
+            if sprite.__class__ == Moving:
+                sprite.move()
+        for sprite in mid_site:
+            if sprite.__class__ == Moving:
+                sprite.move()
+        for sprite in up_site:
+            if sprite.__class__ == Moving:
+                sprite.move()
 
     def check_field(self):
         booly = False
         for sprite in down_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 560:
-                    if sprite.__class__ == Stand:
+                    if sprite.__class__ == Stand or \
+                                    sprite.__class__ == Moving:
                         self.speed, self.way = 200, 250
                     elif sprite.__class__ == Breaking:
                         sprite.kill()
+        stand_in_mid = 0
         for sprite in mid_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 360:
-                    if sprite.__class__ == Stand:
+                    if sprite.__class__ == Stand or \
+                                    sprite.__class__ == Moving:
                         self.speed, self.way = 200, 250
                         booly = True
+                        stand_in_mid += 1
                     elif sprite.__class__ == Breaking:
                         sprite.kill()
         for sprite in up_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 160:
-                    if sprite.__class__ == Breaking:
+                    if sprite.__class__ == Stand or \
+                                    sprite.__class__ == Moving:
                         self.speed, self.way = 200, 250
                         booly = True
                     elif sprite.__class__ == Breaking:
@@ -85,21 +99,25 @@ class Hero(pygame.sprite.Sprite):
                 sprite.__class__(mid_site, all_sprites,
                                  sprite.get_x(), 350)
                 sprite.kill()
-            coords = get_coords(150)
-            counter = 0
-            for coord in coords:
-                if len(coords) > 1 and self.level > 3:
-                    number = random.randint(0, 1)
-                    if number and counter + 1 < len(coords) \
-                            and coord[0] != 300:
-                        Breaking(up_site, all_sprites, *coord)
-                        counter += 1
+            number = random.randint(0, 5) if self.level > 8 else 1
+            if number:
+                coords = get_coords(150)
+                counter = 0
+                for coord in coords:
+                    if len(coords) > 1 and self.level > 3:
+                        number = random.randint(0, 1)
+                        if number and counter + 1 < len(coords) \
+                                and coord[0] != 300:
+                            Breaking(up_site, all_sprites, *coord)
+                            counter += 1
+                        else:
+                            Stand(up_site, all_sprites, *coord)
                     else:
                         Stand(up_site, all_sprites, *coord)
-                else:
-                    Stand(up_site, all_sprites, *coord)
-            if (300, 150) not in coords:
-                Stand(up_site, all_sprites, 300, 150)
+                    if (300, 150) not in coords and stand_in_mid < 2:
+                        Stand(up_site, all_sprites, 300, 150)
+            else:
+                Moving(up_site, all_sprites, 0, 150)
             self.move_down()
 
     def move_x(self, direct):
@@ -159,7 +177,7 @@ class Moving(Platf):
         self.rect.x += self.dir * self.moving / fps
         if self.rect.x == 0:
             self.dir = 1
-        if self.rect.x + self.rect.wisth == 700:
+        if self.rect.x + self.rect.width == 700:
             self.dir = -1
 
 
