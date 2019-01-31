@@ -22,7 +22,7 @@ def get_coords(number):
     list = [0, 1, 2, 3, 4, 5, 6]
     number2 = random.randint(1, 6)
     platforms = random.sample(list, number2)
-    return [(platform * 100, number) for platform in platforms]
+    return {(platform * 100, number) for platform in platforms}
 
 
 class Hero(pygame.sprite.Sprite):
@@ -35,6 +35,7 @@ class Hero(pygame.sprite.Sprite):
         self.speed = 200
         self.way = 220
         self.right = True
+        self.level = 1
 
     def move(self):
         self.rect.y -= self.speed / fps
@@ -52,31 +53,53 @@ class Hero(pygame.sprite.Sprite):
         for sprite in down_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 560:
-                    self.speed, self.way = 200, 250
+                    if sprite.__class__ == Stand:
+                        self.speed, self.way = 200, 250
+                    elif sprite.__class__ == Breaking:
+                        sprite.kill()
         for sprite in mid_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 360:
-                    self.speed, self.way = 200, 250
-                    booly = True
+                    if sprite.__class__ == Stand:
+                        self.speed, self.way = 200, 250
+                        booly = True
+                    elif sprite.__class__ == Breaking:
+                        sprite.kill()
         for sprite in up_site:
             if pygame.sprite.collide_mask(self, sprite):
                 if self.rect.y + self.rect.height < 160:
-                    self.speed, self.way = 200, 250
-                    booly = True
+                    if sprite.__class__ == Breaking:
+                        self.speed, self.way = 200, 250
+                        booly = True
+                    elif sprite.__class__ == Breaking:
+                        sprite.kill()
         if booly:
+            self.level += 1
             for sprite in down_site:
                 sprite.kill()
             for sprite in mid_site:
-                Stand(down_site, all_sprites,
-                      sprite.get_x(), 550)
+                sprite.__class__(down_site, all_sprites,
+                                 sprite.get_x(), 550)
                 sprite.kill()
             for sprite in up_site:
-                Stand(mid_site, all_sprites,
-                      sprite.get_x(), 350)
+                sprite.__class__(mid_site, all_sprites,
+                                 sprite.get_x(), 350)
                 sprite.kill()
             coords = get_coords(150)
+            counter = 0
             for coord in coords:
-                Stand(up_site, all_sprites, *coord)
+                if len(coords) > 1 and self.level > 3:
+                    number = random.randint(0, 1)
+                    if number and counter + 1 < len(coords) \
+                            and coord[0] != 300:
+                        Breaking(up_site, all_sprites, *coord)
+                        counter += 1
+                    else:
+                        Stand(up_site, all_sprites, *coord)
+                else:
+                    Stand(up_site, all_sprites, *coord)
+            if (300, 150) not in coords:
+                Stand(up_site, all_sprites, 300, 150)
             self.move_down()
 
     def move_x(self, direct):
@@ -100,10 +123,10 @@ class Hero(pygame.sprite.Sprite):
             self.right = False
 
 
-class Stand(pygame.sprite.Sprite):
-    def __init__(self, group, base_group, x, y):
+class Platf(pygame.sprite.Sprite):
+    def __init__(self, group, base_group, x, y, img):
         super().__init__(group, base_group)
-        self.image = platf_ims['stand']
+        self.image = platf_ims[img]
         self.image = pygame.transform.scale(self.image, (100, 20))
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -116,12 +139,38 @@ class Stand(pygame.sprite.Sprite):
         return self.rect.y
 
 
+class Stand(Platf):
+    def __init__(self, group, base_group, x, y):
+        super().__init__(group, base_group, x, y, 'stand')
+
+
+class Breaking(Platf):
+    def __init__(self, group, base_group, x, y):
+        super().__init__(group, base_group, x, y, 'break')
+
+
+class Moving(Platf):
+    def __init__(self, group, base_group, x, y):
+        super().__init__(group, base_group, x, y, 'move')
+        self.moving = 50
+        self.dir = 1
+
+    def move(self):
+        self.rect.x += self.dir * self.moving / fps
+        if self.rect.x == 0:
+            self.dir = 1
+        if self.rect.x + self.rect.wisth == 700:
+            self.dir = -1
+
+
 pygame.init()
 running = True
 started = False
 screen = pygame.display.set_mode((700, 600))
 doodle_im = load_image('doodle.png', -1)
-platf_ims = {'stand': load_image('platf0.png', -1)}
+platf_ims = {'stand': load_image('platf0.png', -1),
+             'break': load_image('platf1.png', -1),
+             'move': load_image('platf2.png', -1)}
 all_sprites = pygame.sprite.Group()
 up_site = pygame.sprite.Group()
 mid_site = pygame.sprite.Group()
