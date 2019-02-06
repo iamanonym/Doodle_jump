@@ -4,7 +4,7 @@ import sys
 import random
 
 
-def load_image(name, colorkey=None):
+def load_image(name, x=None, y=None, colorkey=None):
     fullname = os.path.join('data', name)
     try:
         image = pygame.image.load(fullname)
@@ -15,6 +15,8 @@ def load_image(name, colorkey=None):
         if colorkey is -1:
             colorkey = image.get_at((0, 0))
         image.set_colorkey(colorkey)
+    if x and y:
+        return pygame.transform.scale(image, (x, y))
     return image
 
 
@@ -25,6 +27,42 @@ def get_coords(number):
     return {(platform * 100, number) for platform in platforms}
 
 
+def waste(group):
+    for sprite in group:
+        sprite.kill()
+
+
+def take_down(group, group2, height):
+    for sprite in group:
+        sprite.__class__(group2, all_sprites,
+                         sprite.get_x(), height)
+        sprite.kill()
+
+
+def make_group(group, height, level, stand_in_mid):
+    number = random.randint(0, 5) if level > 8 else 1
+    if number:
+        coords = get_coords(height)
+        counter = 0
+        for coord in coords:
+            if len(coords) > 1:
+                number = random.randint(0, 2)
+                if number == 1 and counter + 1 < len(coords) \
+                        and coord[0] != 300:
+                    Breaking(group, all_sprites, *coord)
+                    counter += 1
+                elif number == 2:
+                    Spring(group, all_sprites, *coord)
+                else:
+                    Stand(group, all_sprites, *coord)
+            else:
+                Stand(group, all_sprites, *coord)
+            if (300, height) not in coords and stand_in_mid < 2:
+                Stand(group, all_sprites, 300, height)
+    else:
+        Moving(group, all_sprites, 0, height)
+
+
 class Hero(pygame.sprite.Sprite):
     def __init__(self, group):
         super().__init__(group)
@@ -32,7 +70,7 @@ class Hero(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = 310
         self.rect.y = 455
-        self.speed = 200
+        self.speed = 250
         self.way = 220
         self.right = True
         self.level = 1
@@ -57,68 +95,44 @@ class Hero(pygame.sprite.Sprite):
             if sprite.__class__ == Moving:
                 sprite.move()
 
-    def check_field(self):
+    def check_group(self, group, height):
         booly = False
-        for sprite in down_site:
+        for sprite in group:
             if pygame.sprite.collide_mask(self, sprite):
-                if self.rect.y + self.rect.height < 560:
-                    if sprite.__class__ == Stand or \
-                                    sprite.__class__ == Moving:
-                        self.speed, self.way = 200, 250
+                if self.rect.y + self.rect.height < height and self.speed < 0:
+                    if sprite.__class__ == Stand \
+                            or sprite.__class__ == Moving:
+                        self.speed, self.way = 250, 250
+                        booly = True
+                    elif sprite.__class__ == Spring:
+                        self.speed, self.way = 250, 400
+                        booly = True
                     elif sprite.__class__ == Breaking:
                         sprite.kill()
+        return booly
+
+    def check_field(self):
         stand_in_mid = 0
-        for sprite in mid_site:
-            if pygame.sprite.collide_mask(self, sprite):
-                if self.rect.y + self.rect.height < 360:
-                    if sprite.__class__ == Stand or \
-                                    sprite.__class__ == Moving:
-                        self.speed, self.way = 200, 250
-                        booly = True
-                        stand_in_mid += 1
-                    elif sprite.__class__ == Breaking:
-                        sprite.kill()
-        for sprite in up_site:
-            if pygame.sprite.collide_mask(self, sprite):
-                if self.rect.y + self.rect.height < 160:
-                    if sprite.__class__ == Stand or \
-                                    sprite.__class__ == Moving:
-                        self.speed, self.way = 200, 250
-                        booly = True
-                    elif sprite.__class__ == Breaking:
-                        sprite.kill()
-        if booly:
+        self.check_group(down_site, 560)
+        booly = int(self.check_group(mid_site, 360))
+        temp = self.check_group(up_site, 160)
+        if temp:
+            booly = 2
+        if booly == 1:
             self.level += 1
-            for sprite in down_site:
-                sprite.kill()
-            for sprite in mid_site:
-                sprite.__class__(down_site, all_sprites,
-                                 sprite.get_x(), 550)
-                sprite.kill()
-            for sprite in up_site:
-                sprite.__class__(mid_site, all_sprites,
-                                 sprite.get_x(), 350)
-                sprite.kill()
-            number = random.randint(0, 5) if self.level > 8 else 1
-            if number:
-                coords = get_coords(150)
-                counter = 0
-                for coord in coords:
-                    if len(coords) > 1 and self.level > 3:
-                        number = random.randint(0, 1)
-                        if number and counter + 1 < len(coords) \
-                                and coord[0] != 300:
-                            Breaking(up_site, all_sprites, *coord)
-                            counter += 1
-                        else:
-                            Stand(up_site, all_sprites, *coord)
-                    else:
-                        Stand(up_site, all_sprites, *coord)
-                    if (300, 150) not in coords and stand_in_mid < 2:
-                        Stand(up_site, all_sprites, 300, 150)
-            else:
-                Moving(up_site, all_sprites, 0, 150)
-            self.move_down()
+            waste(down_site)
+            take_down(mid_site, down_site, 550)
+            take_down(up_site, mid_site, 350)
+            make_group(up_site, 150, self.level, stand_in_mid)
+            self.move_down(150)
+        elif booly == 2:
+            self.level += 1
+            waste(down_site)
+            waste(mid_site)
+            take_down(up_site, down_site, 550)
+            make_group(up_site, 150, self.level, stand_in_mid)
+            make_group(mid_site, 350, self.level, stand_in_mid)
+            self.move_down(300)
 
     def move_x(self, direct):
         self.rect.x += direct * abs(self.speed) / fps
@@ -129,8 +143,8 @@ class Hero(pygame.sprite.Sprite):
         if self.rect.x + self.rect.width > 700:
             self.rect.x = 700 - self.rect.width
 
-    def move_down(self):
-        self.rect.y += 150
+    def move_down(self, length):
+        self.rect.y += length
 
     def turn(self, direct):
         if direct > 0 and not self.right:
@@ -145,7 +159,7 @@ class Platf(pygame.sprite.Sprite):
     def __init__(self, group, base_group, x, y, img):
         super().__init__(group, base_group)
         self.image = platf_ims[img]
-        self.image = pygame.transform.scale(self.image, (100, 20))
+        self.image = self.image
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -181,14 +195,20 @@ class Moving(Platf):
             self.dir = -1
 
 
+class Spring(Platf):
+    def __init__(self, group, base_group, x, y):
+        super().__init__(group, base_group, x, y, 'spring')
+
+
 pygame.init()
 running = True
 started = False
 screen = pygame.display.set_mode((700, 600))
 doodle_im = load_image('doodle.png', -1)
-platf_ims = {'stand': load_image('platf0.png', -1),
-             'break': load_image('platf1.png', -1),
-             'move': load_image('platf2.png', -1)}
+platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
+             'break': load_image('platf1.png', 100, 20, -1),
+             'move': load_image('platf2.png', 100, 20, -1),
+             'spring': load_image('platf3.png', 100, 20, -1)}
 all_sprites = pygame.sprite.Group()
 up_site = pygame.sprite.Group()
 mid_site = pygame.sprite.Group()
