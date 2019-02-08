@@ -20,8 +20,47 @@ def load_image(name, x=None, y=None, colorkey=None):
     return image
 
 
+def terminate():
+    pygame.quit()
+    sys.exit()
+
+
+def start_screen():
+    intro_text = ["DOODLE JUMP", "ЗАСТАВКА", "",
+                  "Чтобы увидеть справку,", "Нажмите F1", "",
+                  "Чтобы начать, нажмите", "Любую клавишу, кроме F1,",
+                  "или любую кнопку мыши"]
+    fon = pygame.transform.scale(load_image('fon.png'), (800, 500))
+    screen.blit(fon, (0, 0))
+    font = pygame.font.Font('data/freesansbold.ttf', 25)
+    font2 = pygame.font.Font('data/freesansbold.ttf', 35)
+    text_coord = 50
+    booly = True
+    for line in intro_text:
+        if not booly:
+            string_rendered = font.render(line, 1, pygame.Color('black'))
+        else:
+            string_rendered = font2.render(line, 1, (100, 150, 100))
+            booly = False
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 400
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN or \
+                    event.type == pygame.MOUSEBUTTONDOWN:
+                return None
+        pygame.display.flip()
+
+
 def get_coords(number):
-    list = [0, 1, 2, 3, 4, 5, 6]
+    list = [0, 1, 2, 3, 4, 5]
     number2 = random.randint(1, 6)
     platforms = random.sample(list, number2)
     return {(platform * 100, number) for platform in platforms}
@@ -39,7 +78,7 @@ def take_down(group, group2, height):
         sprite.kill()
 
 
-def make_group(group, height, level, stand_in_mid):
+def make_group(group, height, level):
     number = random.randint(0, 5) if level > 8 else 1
     if number:
         coords = get_coords(height)
@@ -57,7 +96,7 @@ def make_group(group, height, level, stand_in_mid):
                     Stand(group, all_sprites, *coord)
             else:
                 Stand(group, all_sprites, *coord)
-            if (300, height) not in coords and stand_in_mid < 2:
+            if (300, height) not in coords:
                 Stand(group, all_sprites, 300, height)
     else:
         Moving(group, all_sprites, 0, height)
@@ -70,7 +109,7 @@ class Hero(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = 310
         self.rect.y = 455
-        self.speed = 250
+        self.speed = 300
         self.way = 220
         self.right = True
         self.level = 1
@@ -99,20 +138,20 @@ class Hero(pygame.sprite.Sprite):
         booly = False
         for sprite in group:
             if pygame.sprite.collide_mask(self, sprite):
-                if self.rect.y + self.rect.height < height and self.speed < 0:
+                if height - 10 < self.rect.y + self.rect.height < height and \
+                                self.speed < 0:
                     if sprite.__class__ == Stand \
                             or sprite.__class__ == Moving:
-                        self.speed, self.way = 250, 250
+                        self.speed, self.way = 300, 250
                         booly = True
                     elif sprite.__class__ == Spring:
-                        self.speed, self.way = 250, 400
+                        self.speed, self.way = 300, 400
                         booly = True
                     elif sprite.__class__ == Breaking:
                         sprite.kill()
         return booly
 
     def check_field(self):
-        stand_in_mid = 0
         self.check_group(down_site, 560)
         booly = int(self.check_group(mid_site, 360))
         temp = self.check_group(up_site, 160)
@@ -123,15 +162,15 @@ class Hero(pygame.sprite.Sprite):
             waste(down_site)
             take_down(mid_site, down_site, 550)
             take_down(up_site, mid_site, 350)
-            make_group(up_site, 150, self.level, stand_in_mid)
+            make_group(up_site, 150, self.level)
             self.move_down(150)
         elif booly == 2:
             self.level += 1
             waste(down_site)
             waste(mid_site)
             take_down(up_site, down_site, 550)
-            make_group(up_site, 150, self.level, stand_in_mid)
-            make_group(mid_site, 350, self.level, stand_in_mid)
+            make_group(up_site, 150, self.level)
+            make_group(mid_site, 350, self.level)
             self.move_down(300)
 
     def move_x(self, direct):
@@ -203,6 +242,8 @@ class Spring(Platf):
 pygame.init()
 running = True
 started = False
+screen = pygame.display.set_mode((800, 500))
+start_screen()
 screen = pygame.display.set_mode((700, 600))
 doodle_im = load_image('doodle.png', -1)
 platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
@@ -224,6 +265,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            terminate()
         if event.type == pygame.KEYDOWN:
             if not started:
                 if event.key == pygame.K_UP:
