@@ -82,16 +82,15 @@ def make_group(group, height, level):
     number = random.randint(0, 5) if level > 8 else 1
     if number:
         coords = get_coords(height)
-        counter = 0
         for coord in coords:
-            if len(coords) > 1:
-                number = random.randint(0, 2)
-                if number == 1 and counter + 1 < len(coords) \
-                        and coord[0] != 300:
+            if len(coords) >= 1:
+                number = random.randint(0, 3)
+                if number == 1 and coord[0] != 300:
                     Breaking(group, all_sprites, *coord)
-                    counter += 1
                 elif number == 2:
                     Spring(group, all_sprites, *coord)
+                elif number == 3:
+                    Snow(group, all_sprites, *coord)
                 else:
                     Stand(group, all_sprites, *coord)
             else:
@@ -107,8 +106,8 @@ class Hero(pygame.sprite.Sprite):
         super().__init__(group)
         self.image = doodle_im
         self.rect = self.image.get_rect()
-        self.rect.x = 310
-        self.rect.y = 455
+        self.rect.x = 330
+        self.rect.y = 485
         self.speed = 300
         self.way = 220
         self.right = True
@@ -147,6 +146,10 @@ class Hero(pygame.sprite.Sprite):
                     elif sprite.__class__ == Spring:
                         self.speed, self.way = 300, 400
                         booly = True
+                    elif sprite.__class__ == Snow:
+                        self.speed, self.way = 300, 250
+                        booly = True
+                        sprite.kill()
                     elif sprite.__class__ == Breaking:
                         sprite.kill()
         return booly
@@ -163,7 +166,7 @@ class Hero(pygame.sprite.Sprite):
             take_down(mid_site, down_site, 550)
             take_down(up_site, mid_site, 350)
             make_group(up_site, 150, self.level)
-            self.move_down(150)
+            self.move_down(550 - self.rect.height)
         elif booly == 2:
             self.level += 1
             waste(down_site)
@@ -171,7 +174,7 @@ class Hero(pygame.sprite.Sprite):
             take_down(up_site, down_site, 550)
             make_group(up_site, 150, self.level)
             make_group(mid_site, 350, self.level)
-            self.move_down(300)
+            self.move_down(550 - self.rect.height)
 
     def move_x(self, direct):
         self.rect.x += direct * abs(self.speed) / fps
@@ -182,8 +185,8 @@ class Hero(pygame.sprite.Sprite):
         if self.rect.x + self.rect.width > 700:
             self.rect.x = 700 - self.rect.width
 
-    def move_down(self, length):
-        self.rect.y += length
+    def move_down(self, new_y):
+        self.rect.y = new_y
 
     def turn(self, direct):
         if direct > 0 and not self.right:
@@ -216,8 +219,11 @@ class Stand(Platf):
 
 
 class Breaking(Platf):
-    def __init__(self, group, base_group, x, y):
-        super().__init__(group, base_group, x, y, 'break')
+    def __init__(self, group, base_group, x, y, is_snow=False):
+        if not is_snow:
+            super().__init__(group, base_group, x, y, 'break')
+        else:
+            super().__init__(group, base_group, x, y, 'snow')
 
 
 class Moving(Platf):
@@ -239,17 +245,25 @@ class Spring(Platf):
         super().__init__(group, base_group, x, y, 'spring')
 
 
+class Snow(Breaking):
+    def __init__(self, group, base_group, x, y):
+        super().__init__(group, base_group, x, y, is_snow=True)
+
+
 pygame.init()
 running = True
 started = False
 screen = pygame.display.set_mode((800, 500))
 start_screen()
 screen = pygame.display.set_mode((700, 600))
-doodle_im = load_image('doodle.png', -1)
+doodle_im = load_image('doodle.png', 70, 65, -1)
 platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
              'break': load_image('platf1.png', 100, 20, -1),
              'move': load_image('platf2.png', 100, 20, -1),
-             'spring': load_image('platf3.png', 100, 20, -1)}
+             'spring': load_image('platf3.png', 100, 20, -1),
+             'snow': load_image('platf4.png', 100, 20, -1),
+             'blast1': load_image('platf5_1.png', 100, 20, -1),
+             'blast2': load_image('platf5_2.png', 100, 20, -1)}
 all_sprites = pygame.sprite.Group()
 up_site = pygame.sprite.Group()
 mid_site = pygame.sprite.Group()
