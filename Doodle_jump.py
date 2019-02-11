@@ -1,3 +1,5 @@
+from PyQt5.QtWidgets import QApplication, QMainWindow
+from PyQt5 import uic
 import pygame
 import os
 import sys
@@ -73,8 +75,8 @@ def waste(group):
 
 def take_down(group, group2, height):
     for sprite in group:
-        sprite.__class__(group2, all_sprites,
-                         sprite.get_x(), height)
+        sprite.__class__(group2, all_sprites, sprite.get_x(),
+                         height, blast=sprite.is_blast())
         sprite.kill()
 
 
@@ -84,13 +86,16 @@ def make_group(group, height, level):
         coords = get_coords(height)
         for coord in coords:
             if len(coords) >= 1:
-                number = random.randint(0, 3)
+                temp = level // 5 if level <= 20 else 4
+                number = random.randint(0, temp)
                 if number == 1 and coord[0] != 300:
                     Breaking(group, all_sprites, *coord)
                 elif number == 2:
                     Spring(group, all_sprites, *coord)
                 elif number == 3:
                     Snow(group, all_sprites, *coord)
+                elif number == 4:
+                    Stand(group, all_sprites, *coord, blast=True)
                 else:
                     Stand(group, all_sprites, *coord)
             else:
@@ -99,6 +104,66 @@ def make_group(group, height, level):
                 Stand(group, all_sprites, 300, height)
     else:
         Moving(group, all_sprites, 0, height)
+
+
+class PasswordWindow(QMainWindow):  # Окно инициализации
+    def __init__(self):
+        super().__init__()
+        uic.loadUi('data/Password_design.ui', self)
+        self.sign_in.clicked.connect(self.signing)
+        self.sign_up.clicked.connect(self.signing)
+        self.is_new = False
+
+    def check(self, mode='s'):  # Проверка логина и пароля
+        self.log = self.login.text()
+        self.word = self.password.text()
+        if mode == 'e' and self.log not in LOGINS:
+            return 'Несуществующий логин'
+        elif mode == 'e' and LOGINS[self.log] != self.word:
+            return 'Неверный пароль'
+        elif mode == 's' and self.log in LOGINS:
+            return 'Логин уже существует'
+        elif len(self.log) < 8 or len(self.word) < 8:
+            return 'Недостаточно символов'
+        elif self.word.isdigit() or self.word.isalpha():
+            return 'Пароль состоит из символов одного вида'
+        elif set(self.log).intersection({',', '.', '!', '?', '/', '\\',
+                                         ';', '(', ')', '&', '[', ']',
+                                         '<', '>', '*', '|', ':', '"'}):
+            return 'Недопустимые символы в логине'
+        elif set(self.word).intersection({',', '.', '!', '?', '/', '\\',
+                                          ';', '(', ')', '&', '[', ']',
+                                          '<', '>', '*', '|', ':', '"'}):
+            return 'Недопустимые символы в пароле'
+
+    def signing(self):
+        if self.sender().text() == 'Вход':
+            self.checking = self.check(mode='e')
+        else:
+            self.checking = self.check()
+            self.is_new = True
+        if self.checking:
+            self.comment.setText(self.checking)
+            self.comment.adjustSize()
+        else:
+            self.name = 'Accounts/{}'.format(self.log)
+            if self.is_new:
+                with open('Accounts/Accounts_list.txt', 'a') as file:
+                    file.write('{} {}\n'.format(self.log, self.word))
+                    file.close()
+                self.file = open(self.name + '.txt', 'w')
+                self.is_new = False
+            self.close()
+
+    def get_log(self):
+        try:
+            return self.log
+        except AttributeError:
+            return None
+
+
+class ResultWindow(QMainWindow):
+    pass
 
 
 class Hero(pygame.sprite.Sprite):
@@ -121,8 +186,10 @@ class Hero(pygame.sprite.Sprite):
             self.check_field()
         else:
             self.way -= self.speed / fps
-        if 10 > self.speed > 0:
+        if 10 > self.speed > 0 or self.rect.y <= 0:
             self.speed = -50
+        if self.rect.y + self.rect.height >= 600:
+            return True
         for sprite in down_site:
             if sprite.__class__ == Moving:
                 sprite.move()
@@ -143,6 +210,10 @@ class Hero(pygame.sprite.Sprite):
                             or sprite.__class__ == Moving:
                         self.speed, self.way = 300, 250
                         booly = True
+                        if sprite.is_blast():
+                            x, y = sprite.get_x(), sprite.get_y()
+                            sprite.kill()
+                            Breaking(group, all_sprites, x, y, blast=True)
                     elif sprite.__class__ == Spring:
                         self.speed, self.way = 300, 400
                         booly = True
@@ -198,13 +269,14 @@ class Hero(pygame.sprite.Sprite):
 
 
 class Platf(pygame.sprite.Sprite):
-    def __init__(self, group, base_group, x, y, img):
+    def __init__(self, group, base_group, x, y, img, blast=None):
         super().__init__(group, base_group)
         self.image = platf_ims[img]
         self.image = self.image
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.blast = blast
 
     def get_x(self):
         return self.rect.x
@@ -212,22 +284,28 @@ class Platf(pygame.sprite.Sprite):
     def get_y(self):
         return self.rect.y
 
+    def is_blast(self):
+        return self.blast
+
 
 class Stand(Platf):
-    def __init__(self, group, base_group, x, y):
-        super().__init__(group, base_group, x, y, 'stand')
+    def __init__(self, group, base_group, x, y, blast=False):
+        if not blast:
+            super().__init__(group, base_group, x, y, 'stand')
+        else:
+            super().__init__(group, base_group, x, y, 'blast1', blast=True)
 
 
 class Breaking(Platf):
-    def __init__(self, group, base_group, x, y, is_snow=False):
-        if not is_snow:
+    def __init__(self, group, base_group, x, y, blast=False):
+        if not blast:
             super().__init__(group, base_group, x, y, 'break')
         else:
-            super().__init__(group, base_group, x, y, 'snow')
+            super().__init__(group, base_group, x, y, 'blast2', blast=True)
 
 
 class Moving(Platf):
-    def __init__(self, group, base_group, x, y):
+    def __init__(self, group, base_group, x, y, blast=False):
         super().__init__(group, base_group, x, y, 'move')
         self.moving = 50
         self.dir = 1
@@ -241,15 +319,31 @@ class Moving(Platf):
 
 
 class Spring(Platf):
-    def __init__(self, group, base_group, x, y):
+    def __init__(self, group, base_group, x, y, blast=False):
         super().__init__(group, base_group, x, y, 'spring')
 
 
-class Snow(Breaking):
-    def __init__(self, group, base_group, x, y):
-        super().__init__(group, base_group, x, y, is_snow=True)
+class Snow(Platf):
+    def __init__(self, group, base_group, x, y, blast=False):
+        super().__init__(group, base_group, x, y, 'snow')
 
 
+try:
+    LOGINS = {x.split()[0]: x.split()[1]
+              for x in open('Accounts/Accounts_list.txt').readlines()}
+except FileNotFoundError:
+    LOGINS = {}
+except IndexError:
+    LOGINS = {}
+user_name = None
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    pw = PasswordWindow()
+    pw.show()
+    app.exec_()
+    user_name = pw.get_log()
+if not user_name:
+    sys.exit()
 pygame.init()
 running = True
 started = False
@@ -275,6 +369,7 @@ Stand(up_site, all_sprites, 400, 150)
 clock = pygame.time.Clock()
 fps = 50
 moving = 0
+end = None
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -294,8 +389,13 @@ while running:
                 moving = 0
     screen.fill((255, 255, 255))
     if started:
-        doodle.move()
+        end = doodle.move()
         doodle.move_x(moving)
+    if end:
+        app2 = QApplication(sys.argv)
+        resw = ResultWindow()
+        resw.show()
+        app2.exec_()
     all_sprites.draw(screen)
     clock.tick(fps)
     pygame.display.flip()
