@@ -28,10 +28,8 @@ def terminate():
 
 
 def start_screen():
-    intro_text = ["DOODLE JUMP", "ЗАСТАВКА", "",
-                  "Чтобы увидеть справку,", "Нажмите F1", "",
-                  "Чтобы начать, нажмите", "Любую клавишу, кроме F1,",
-                  "или любую кнопку мыши"]
+    intro_text = ["DOODLE JUMP", "ЗАСТАВКА", "", "Чтобы начать, нажмите",
+                  "любую клавишу или любую", "кнопку мыши"]
     fon = pygame.transform.scale(load_image('fon.png'), (800, 500))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font('data/freesansbold.ttf', 25)
@@ -50,13 +48,12 @@ def start_screen():
         intro_rect.x = 400
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
-                    event.type == pygame.MOUSEBUTTONDOWN:
+                            event.type == pygame.MOUSEBUTTONDOWN:
                 return None
         pygame.display.flip()
 
@@ -66,6 +63,42 @@ def get_coords(number):
     number2 = random.randint(1, 6)
     platforms = random.sample(list, number2)
     return {(platform * 100, number) for platform in platforms}
+
+
+def count_best():
+    result = {}
+    for login in sorted(LOGINS):
+        file = open('Accounts/{}.txt'.format(login))
+        try:
+            level = int(file.read().split()[0])
+            result[level] = result.get(level, []) + [login]
+        except IndexError:
+            pass
+        file.close()
+    best = []
+    for level in sorted(result)[-5:][::-1]:
+        for login in result[level]:
+            best.append('{} - {}'.format(login, level))
+        if len(best) >= 5:
+            break
+    return best
+
+
+def change_result(name, new_levels, new_stars):
+    file_name = 'Accounts/{}.txt'.format(name)
+    file = open(file_name)
+    text = file.read()
+    levels, stars = 0, 0
+    if not text:
+        pass
+    else:
+        levels, stars = tuple(map(lambda x: int(x), text.split()))
+    file.close()
+    levels = new_levels if new_levels > levels else levels
+    stars += new_stars
+    file2 = open(file_name, 'w')
+    file2.write('{} {}'.format(levels, stars))
+    file2.close()
 
 
 def waste(group):
@@ -104,6 +137,102 @@ def make_group(group, height, level):
                 Stand(group, all_sprites, 300, height)
     else:
         Moving(group, all_sprites, 0, height)
+
+
+def show_result(levels, stars):
+    screen = pygame.display.set_mode((300, 300))
+    intro_text = ["Пройдено уровней: {}".format(str(levels)),
+                  "Получено звезд: {}".format(str(stars))]
+    screen.fill((255, 255, 255))
+    font = pygame.font.Font('data/freesansbold.ttf', 25)
+    text_coord = 0
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 0
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    b1 = Button((0, 100, 300, 100), 'Начать заново')
+    b1.draw()
+    b2 = Button((0, 200, 300, 100), 'Таблица результатов', font=20)
+    b2.draw()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if b1.is_inside(*event.pos):
+                    main(user_name)
+                elif b2.is_inside(*event.pos):
+                    create_table()
+        pygame.display.flip()
+
+
+def create_table():
+    intro_text = count_best()
+    screen = pygame.display.set_mode((300, 50 * (len(intro_text) + 2)))
+    screen.fill((255, 255, 255))
+    font = pygame.font.Font('data/freesansbold.ttf', 30)
+    text_coord = -10
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 0
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    btn = Button((0, len(intro_text) * 50, 300, 100), 'Начать заново')
+    btn.draw()
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if btn.is_inside(*event.pos):
+                    main(user_name)
+        pygame.display.flip()
+
+
+def main(name):
+    screen = pygame.display.set_mode((700, 600))
+    doodle = Hero(all_sprites)
+    Stand(down_site, all_sprites, 320, 550)
+    Stand(mid_site, all_sprites, 100, 350)
+    Stand(up_site, all_sprites, 400, 150)
+    clock = pygame.time.Clock()
+    moving = 0
+    end = None
+    started = False
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                if not started:
+                    if event.key == pygame.K_UP:
+                        started = True
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_RIGHT]:
+                    moving = 1
+                if keys[pygame.K_LEFT]:
+                    moving = -1
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_RIGHT or event.key == pygame.K_LEFT:
+                    moving = 0
+        screen.fill((255, 255, 255))
+        if started:
+            end, level = doodle.move()
+            doodle.move_x(moving)
+        if end:
+            waste(all_sprites)
+            change_result(user_name, level, level // 5)
+            show_result(level, level // 5)
+        all_sprites.draw(screen)
+        clock.tick(fps)
+        pygame.display.flip()
 
 
 class PasswordWindow(QMainWindow):  # Окно инициализации
@@ -161,9 +290,31 @@ class PasswordWindow(QMainWindow):  # Окно инициализации
         except AttributeError:
             return None
 
+    def get_pswd(self):
+        try:
+            return self.word
+        except AttributeError:
+            return None
 
-class ResultWindow(QMainWindow):
-    pass
+
+class Button:
+    def __init__(self, size, text, font=30):
+        self.x, self.y, self.width, self.height = self.size = size
+        self.text = text
+        self.font = font
+
+    def draw(self):
+        pygame.draw.rect(screen, (0, 0, 0), self.size, 1)
+        font = pygame.font.Font('data/freesansbold.ttf', self.font)
+        string_rendered = font.render(self.text, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        intro_rect.x, intro_rect.y = \
+            self.x + self.width // 10, self.y + self.height // 3
+        screen.blit(string_rendered, intro_rect)
+
+    def is_inside(self, x, y):
+        return self.x <= x <= self.x + self.width and \
+               self.y <= y <= self.y + self.height
 
 
 class Hero(pygame.sprite.Sprite):
@@ -189,7 +340,7 @@ class Hero(pygame.sprite.Sprite):
         if 10 > self.speed > 0 or self.rect.y <= 0:
             self.speed = -50
         if self.rect.y + self.rect.height >= 600:
-            return True
+            return True, self.level
         for sprite in down_site:
             if sprite.__class__ == Moving:
                 sprite.move()
@@ -199,6 +350,7 @@ class Hero(pygame.sprite.Sprite):
         for sprite in up_site:
             if sprite.__class__ == Moving:
                 sprite.move()
+        return False, None
 
     def check_group(self, group, height):
         booly = False
@@ -208,6 +360,7 @@ class Hero(pygame.sprite.Sprite):
                                 self.speed < 0:
                     if sprite.__class__ == Stand \
                             or sprite.__class__ == Moving:
+                        sounds['stand'].play()
                         self.speed, self.way = 300, 250
                         booly = True
                         if sprite.is_blast():
@@ -215,13 +368,16 @@ class Hero(pygame.sprite.Sprite):
                             sprite.kill()
                             Breaking(group, all_sprites, x, y, blast=True)
                     elif sprite.__class__ == Spring:
+                        sounds['spring'].play()
                         self.speed, self.way = 300, 400
                         booly = True
                     elif sprite.__class__ == Snow:
+                        sounds['stand'].play()
                         self.speed, self.way = 300, 250
                         booly = True
                         sprite.kill()
                     elif sprite.__class__ == Breaking:
+                        sounds['break'].play()
                         sprite.kill()
         return booly
 
@@ -328,28 +484,28 @@ class Snow(Platf):
         super().__init__(group, base_group, x, y, 'snow')
 
 
+LOGINS = {}
 try:
     LOGINS = {x.split()[0]: x.split()[1]
               for x in open('Accounts/Accounts_list.txt').readlines()}
 except FileNotFoundError:
-    LOGINS = {}
+    pass
 except IndexError:
-    LOGINS = {}
-user_name = None
+    pass
+user_name, pswd = None, None
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     pw = PasswordWindow()
     pw.show()
     app.exec_()
-    user_name = pw.get_log()
+    user_name, pswd = pw.get_log(), pw.get_pswd()
 if not user_name:
     sys.exit()
+if user_name not in LOGINS:
+    LOGINS[user_name] = pswd
 pygame.init()
-running = True
-started = False
 screen = pygame.display.set_mode((800, 500))
 start_screen()
-screen = pygame.display.set_mode((700, 600))
 doodle_im = load_image('doodle.png', 70, 65, -1)
 platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
              'break': load_image('platf1.png', 100, 20, -1),
@@ -358,44 +514,12 @@ platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
              'snow': load_image('platf4.png', 100, 20, -1),
              'blast1': load_image('platf5_1.png', 100, 20, -1),
              'blast2': load_image('platf5_2.png', 100, 20, -1)}
+sounds = {'stand': pygame.mixer.Sound('data/stand.ogg'),
+          'break': pygame.mixer.Sound('data/break.ogg'),
+          'spring': pygame.mixer.Sound('data/spring.ogg')}
 all_sprites = pygame.sprite.Group()
 up_site = pygame.sprite.Group()
 mid_site = pygame.sprite.Group()
 down_site = pygame.sprite.Group()
-doodle = Hero(all_sprites)
-Stand(down_site, all_sprites, 320, 550)
-Stand(mid_site, all_sprites, 100, 350)
-Stand(up_site, all_sprites, 400, 150)
-clock = pygame.time.Clock()
 fps = 50
-moving = 0
-end = None
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-            terminate()
-        if event.type == pygame.KEYDOWN:
-            if not started:
-                if event.key == pygame.K_UP:
-                    started = True
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_RIGHT]:
-                moving = 1
-            if keys[pygame.K_LEFT]:
-                moving = -1
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_RIGHT or event.key == pygame.K_LEFT:
-                moving = 0
-    screen.fill((255, 255, 255))
-    if started:
-        end = doodle.move()
-        doodle.move_x(moving)
-    if end:
-        app2 = QApplication(sys.argv)
-        resw = ResultWindow()
-        resw.show()
-        app2.exec_()
-    all_sprites.draw(screen)
-    clock.tick(fps)
-    pygame.display.flip()
+main(user_name)
