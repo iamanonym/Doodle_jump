@@ -6,7 +6,7 @@ import sys
 import random
 
 
-def load_image(name, x=None, y=None, colorkey=None):
+def load_image(name, x=None, y=None, colorkey=None):  # Загрузка изображения
     fullname = os.path.join('data', name)
     try:
         image = pygame.image.load(fullname)
@@ -22,12 +22,12 @@ def load_image(name, x=None, y=None, colorkey=None):
     return image
 
 
-def terminate():
+def terminate():  # Конец игры
     pygame.quit()
     sys.exit()
 
 
-def start_screen():
+def start_screen():  # Окно заставки
     intro_text = ["DOODLE JUMP", "ЗАСТАВКА", "", "Чтобы начать, нажмите",
                   "любую клавишу или любую", "кнопку мыши"]
     fon = pygame.transform.scale(load_image('fon.png'), (800, 500))
@@ -53,19 +53,19 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN or \
-                            event.type == pygame.MOUSEBUTTONDOWN:
+                    event.type == pygame.MOUSEBUTTONDOWN:
                 return None
         pygame.display.flip()
 
 
-def get_coords(number):
+def get_coords(number):  # Выбор расположения платформ на уровне
     list = [0, 1, 2, 3, 4, 5]
     number2 = random.randint(1, 6)
     platforms = random.sample(list, number2)
     return {(platform * 100, number) for platform in platforms}
 
 
-def count_best():
+def count_best():  # Нахождение лучших игроков
     result = {}
     for login in sorted(LOGINS):
         file = open('Accounts/{}.txt'.format(login))
@@ -84,8 +84,8 @@ def count_best():
     return best
 
 
-def change_result(name, new_levels, new_stars):
-    file_name = 'Accounts/{}.txt'.format(name)
+def change_result(name, new_levels, new_stars):  # Обновление
+    file_name = 'Accounts/{}.txt'.format(name)  # личной информации
     file = open(file_name)
     text = file.read()
     levels, stars = 0, 0
@@ -101,19 +101,19 @@ def change_result(name, new_levels, new_stars):
     file2.close()
 
 
-def waste(group):
+def waste(group):  # Очистка группы спрайтов
     for sprite in group:
         sprite.kill()
 
 
-def take_down(group, group2, height):
+def take_down(group, group2, height):  # Опустить группу на уровень ниже
     for sprite in group:
         sprite.__class__(group2, all_sprites, sprite.get_x(),
                          height, blast=sprite.is_blast())
         sprite.kill()
 
 
-def make_group(group, height, level):
+def make_group(group, height, level):  # Отрисовка уровня
     number = random.randint(0, 5) if level > 8 else 1
     if number:
         coords = get_coords(height)
@@ -139,7 +139,7 @@ def make_group(group, height, level):
         Moving(group, all_sprites, 0, height)
 
 
-def show_result(levels, stars):
+def show_result(levels, stars):  # Окно вывода результата
     screen = pygame.display.set_mode((300, 300))
     intro_text = ["Пройдено уровней: {}".format(str(levels)),
                   "Получено звезд: {}".format(str(stars))]
@@ -170,7 +170,7 @@ def show_result(levels, stars):
         pygame.display.flip()
 
 
-def create_table():
+def create_table():  # Окно таблицы лучших результатов
     intro_text = count_best()
     screen = pygame.display.set_mode((300, 50 * (len(intro_text) + 2)))
     screen.fill((255, 255, 255))
@@ -196,7 +196,7 @@ def create_table():
         pygame.display.flip()
 
 
-def main(name):
+def main(name):  # Основная игровая функция
     screen = pygame.display.set_mode((700, 600))
     doodle = Hero(all_sprites)
     Stand(down_site, all_sprites, 320, 550)
@@ -210,7 +210,7 @@ def main(name):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
-            if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN:  # Изменение направления
                 if not started:
                     if event.key == pygame.K_UP:
                         started = True
@@ -226,7 +226,7 @@ def main(name):
         if started:
             end, level = doodle.move()
             doodle.move_x(moving)
-        if end:
+        if end:  # Проигрыщ
             waste(all_sprites)
             change_result(user_name, level, level // 5)
             show_result(level, level // 5)
@@ -235,8 +235,8 @@ def main(name):
         pygame.display.flip()
 
 
-class PasswordWindow(QMainWindow):  # Окно инициализации
-    def __init__(self):
+class PasswordWindow(QMainWindow):  # Окно авторизации
+    def __init__(self):  # Инициализация
         super().__init__()
         uic.loadUi('data/Password_design.ui', self)
         self.sign_in.clicked.connect(self.signing)
@@ -284,26 +284,26 @@ class PasswordWindow(QMainWindow):  # Окно инициализации
                 self.is_new = False
             self.close()
 
-    def get_log(self):
+    def get_log(self):  # Возвращает логин
         try:
             return self.log
         except AttributeError:
             return None
 
-    def get_pswd(self):
+    def get_pswd(self):  # Возвращает пароль
         try:
             return self.word
         except AttributeError:
             return None
 
 
-class Button:
-    def __init__(self, size, text, font=30):
+class Button:  # Класс кнопки для окна PyGame
+    def __init__(self, size, text, font=30):  # Инициализация кнопки
         self.x, self.y, self.width, self.height = self.size = size
         self.text = text
         self.font = font
 
-    def draw(self):
+    def draw(self):  # Отрисовка кнопки
         pygame.draw.rect(screen, (0, 0, 0), self.size, 1)
         font = pygame.font.Font('data/freesansbold.ttf', self.font)
         string_rendered = font.render(self.text, 1, pygame.Color('black'))
@@ -312,13 +312,13 @@ class Button:
             self.x + self.width // 10, self.y + self.height // 3
         screen.blit(string_rendered, intro_rect)
 
-    def is_inside(self, x, y):
+    def is_inside(self, x, y):  # Проверка, нажата ли кнопка
         return self.x <= x <= self.x + self.width and \
                self.y <= y <= self.y + self.height
 
 
-class Hero(pygame.sprite.Sprite):
-    def __init__(self, group):
+class Hero(pygame.sprite.Sprite):  # Класс героя
+    def __init__(self, group):  # Инициализация
         super().__init__(group)
         self.image = doodle_im
         self.rect = self.image.get_rect()
@@ -327,9 +327,9 @@ class Hero(pygame.sprite.Sprite):
         self.speed = 300
         self.way = 220
         self.right = True
-        self.level = 1
+        self.level = 0
 
-    def move(self):
+    def move(self):  # Передвижение с течением времени
         self.rect.y -= self.speed / fps
         if self.way <= 0:
             if self.speed > 0:
@@ -341,18 +341,14 @@ class Hero(pygame.sprite.Sprite):
             self.speed = -50
         if self.rect.y + self.rect.height >= 600:
             return True, self.level
-        for sprite in down_site:
-            if sprite.__class__ == Moving:
-                sprite.move()
-        for sprite in mid_site:
-            if sprite.__class__ == Moving:
-                sprite.move()
-        for sprite in up_site:
-            if sprite.__class__ == Moving:
-                sprite.move()
+        for group in [down_site, mid_site, up_site]:
+            for sprite in group:
+                if sprite.__class__ == Moving:
+                    sprite.move()
         return False, None
 
     def check_group(self, group, height):
+        # Проверка, соприкоснулся ли герой с какой-либо платформой
         booly = False
         for sprite in group:
             if pygame.sprite.collide_mask(self, sprite):
@@ -381,7 +377,7 @@ class Hero(pygame.sprite.Sprite):
                         sprite.kill()
         return booly
 
-    def check_field(self):
+    def check_field(self):  # Проверка необходимости изменить поле
         self.check_group(down_site, 560)
         booly = int(self.check_group(mid_site, 360))
         temp = self.check_group(up_site, 160)
@@ -395,7 +391,7 @@ class Hero(pygame.sprite.Sprite):
             make_group(up_site, 150, self.level)
             self.move_down(550 - self.rect.height)
         elif booly == 2:
-            self.level += 1
+            self.level += 2
             waste(down_site)
             waste(mid_site)
             take_down(up_site, down_site, 550)
@@ -403,7 +399,7 @@ class Hero(pygame.sprite.Sprite):
             make_group(mid_site, 350, self.level)
             self.move_down(550 - self.rect.height)
 
-    def move_x(self, direct):
+    def move_x(self, direct):  # Движение под действием кнопок
         self.rect.x += direct * abs(self.speed) / fps
         if direct:
             self.turn(direct)
@@ -412,10 +408,10 @@ class Hero(pygame.sprite.Sprite):
         if self.rect.x + self.rect.width > 700:
             self.rect.x = 700 - self.rect.width
 
-    def move_down(self, new_y):
+    def move_down(self, new_y):  # Задать ординату героя программно
         self.rect.y = new_y
 
-    def turn(self, direct):
+    def turn(self, direct):  # Поворот в зависимости от направления движения
         if direct > 0 and not self.right:
             self.image = pygame.transform.flip(self.image, 1, 0)
             self.right = True
@@ -424,7 +420,8 @@ class Hero(pygame.sprite.Sprite):
             self.right = False
 
 
-class Platf(pygame.sprite.Sprite):
+class Platf(pygame.sprite.Sprite):  # Базовый класс платформы
+    # Инициализация
     def __init__(self, group, base_group, x, y, img, blast=None):
         super().__init__(group, base_group)
         self.image = platf_ims[img]
@@ -434,17 +431,17 @@ class Platf(pygame.sprite.Sprite):
         self.rect.y = y
         self.blast = blast
 
-    def get_x(self):
+    def get_x(self): # Возвращает абсциссу
         return self.rect.x
 
-    def get_y(self):
+    def get_y(self):  # Возвращает ординату
         return self.rect.y
 
-    def is_blast(self):
+    def is_blast(self):  # Возвращается, является ли взрывной
         return self.blast
 
 
-class Stand(Platf):
+class Stand(Platf):  # Стандартная платформа
     def __init__(self, group, base_group, x, y, blast=False):
         if not blast:
             super().__init__(group, base_group, x, y, 'stand')
@@ -452,7 +449,7 @@ class Stand(Platf):
             super().__init__(group, base_group, x, y, 'blast1', blast=True)
 
 
-class Breaking(Platf):
+class Breaking(Platf):  # Ломающася платформа
     def __init__(self, group, base_group, x, y, blast=False):
         if not blast:
             super().__init__(group, base_group, x, y, 'break')
@@ -460,7 +457,7 @@ class Breaking(Platf):
             super().__init__(group, base_group, x, y, 'blast2', blast=True)
 
 
-class Moving(Platf):
+class Moving(Platf):  # Движущаяся платформа
     def __init__(self, group, base_group, x, y, blast=False):
         super().__init__(group, base_group, x, y, 'move')
         self.moving = 50
@@ -474,17 +471,17 @@ class Moving(Platf):
             self.dir = -1
 
 
-class Spring(Platf):
+class Spring(Platf):  # Платформа-пружина
     def __init__(self, group, base_group, x, y, blast=False):
         super().__init__(group, base_group, x, y, 'spring')
 
 
-class Snow(Platf):
+class Snow(Platf):  # Снежная платформа
     def __init__(self, group, base_group, x, y, blast=False):
         super().__init__(group, base_group, x, y, 'snow')
 
 
-LOGINS = {}
+LOGINS = {}  # Словарь логинов и паролей
 try:
     LOGINS = {x.split()[0]: x.split()[1]
               for x in open('Accounts/Accounts_list.txt').readlines()}
@@ -493,7 +490,7 @@ except FileNotFoundError:
 except IndexError:
     pass
 user_name, pswd = None, None
-if __name__ == '__main__':
+if __name__ == '__main__':  # Авторизация
     app = QApplication(sys.argv)
     pw = PasswordWindow()
     pw.show()
@@ -507,6 +504,7 @@ pygame.init()
 screen = pygame.display.set_mode((800, 500))
 start_screen()
 doodle_im = load_image('doodle.png', 70, 65, -1)
+# Словари с графической и звуковой информацией
 platf_ims = {'stand': load_image('platf0.png', 100, 20, -1),
              'break': load_image('platf1.png', 100, 20, -1),
              'move': load_image('platf2.png', 100, 20, -1),
