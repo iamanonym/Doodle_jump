@@ -29,7 +29,9 @@ def terminate():  # Конец игры
 
 def start_screen():  # Окно заставки
     intro_text = ["DOODLE JUMP", "ЗАСТАВКА", "", "Чтобы начать, нажмите",
-                  "любую клавишу или любую", "кнопку мыши"]
+                  "любую клавишу или любую", "кнопку мыши",
+                  "Для первого прыжка", "нажмите стрелку вверх,",
+                  "потом управляйте стрелками", "влево и вправо"]
     fon = pygame.transform.scale(load_image('fon.png'), (800, 500))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font('data/freesansbold.ttf', 25)
@@ -431,7 +433,7 @@ class Platf(pygame.sprite.Sprite):  # Базовый класс платформ
         self.rect.y = y
         self.blast = blast
 
-    def get_x(self): # Возвращает абсциссу
+    def get_x(self):  # Возвращает абсциссу
         return self.rect.x
 
     def get_y(self):  # Возвращает ординату
